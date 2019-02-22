@@ -34,9 +34,18 @@ For completeness, we also provide an implementation of DQN
 For additional details, please see our
 [documentation](https://github.com/google/dopamine/tree/master/docs).
 
+We provide a set of [Colaboratory
+notebooks](https://github.com/google/dopamine/tree/master/dopamine/colab)
+which demonstrate how to use Dopamine.
+
 This is not an official Google product.
 
 ## What's new
+*  **30/01/2019:** Dopamine 2.0 now supports general discrete-domain gym
+   environments.
+*  **01/11/2018:** Download links for each individual checkpoint, to avoid
+   having to download all of the checkpoints.
+*  **29/10/2018:** Graph definitions now show up in Tensorboard.
 *  **16/10/2018:** Fixed a subtle bug in the IQN implementation and upated
    the colab tools, the JSON files, and all the downloadable data.
 *  **18/09/2018:** Added support for double-DQN style updates for the
@@ -44,7 +53,8 @@ This is not an official Google product.
    *  Can be enabled via the `double_dqn` constructor parameter.
 *  **18/09/2018:** Added support for reporting in-iteration losses directly from
    the agent to Tensorboard.
-   *  Include the flag `--debug_mode` in your command line to enable it.
+   *  Set the `run_experiment.create_agent.debug_mode = True` via the
+      configuration file or using the `gin_bindings` flag to enable it.
    *  Control frequency of writes with the `summary_writing_frequency`
       agent constructor parameter (defaults to `500`).
 *  **27/08/2018:** Dopamine launched!
@@ -70,86 +80,65 @@ for additional details.
 Finally, these instructions are for Python 2.7. While Dopamine is Python 3
 compatible, there may be some additional steps needed during installation.
 
-#### Ubuntu
-
-First set up the virtual environment:
+First install [Anaconda](https://docs.anaconda.com/anaconda/install/), which
+we will use as the environment manager, then proceed below.
 
 ```
-sudo apt-get update && sudo apt-get install virtualenv
-virtualenv --python=python2.7 dopamine-env
-source dopamine-env/bin/activate
+conda create --name dopamine-env python=3.6
+conda activate dopamine-env
 ```
 
 This will create a directory called `dopamine-env` in which your virtual
 environment lives. The last command activates the environment.
 
-Then, install the dependencies to Dopamine. If you don't have access to a
-GPU, then replace `tensorflow-gpu` with `tensorflow` in the line below
-(see [Tensorflow instructions](https://www.tensorflow.org/install/install_linux)
-for details).
+Install the dependencies below, based on your operating system, and then
+finally download the Dopamine source, e.g.
+
+```
+git clone https://github.com/google/dopamine.git
+```
+
+#### Ubuntu
+
+If you don't have access to a GPU, then replace `tensorflow-gpu` with
+`tensorflow` in the line below (see [Tensorflow
+instructions](https://www.tensorflow.org/install/install_linux) for details).
 
 ```
 sudo apt-get update && sudo apt-get install cmake zlib1g-dev
 pip install absl-py atari-py gin-config gym opencv-python tensorflow-gpu
 ```
 
-During installation, you may safely ignore the following error message:
-*tensorflow 1.10.1 has requirement numpy<=1.14.5,>=1.13.3, but you'll have
-numpy 1.15.1 which is incompatible*.
-
-Finally, download the Dopamine source, e.g.
-
-```
-git clone https://github.com/google/dopamine.git
-```
-
 #### Mac OS X
-
-First set up the virtual environment:
-
-```
-pip install virtualenv
-virtualenv --python=python2.7 dopamine-env
-source dopamine-env/bin/activate
-```
-
-This will create a directory called `dopamine-env` in which your virtual
-environment lives. The last command activates the environment.
-
-Then, install the dependencies to Dopamine:
 
 ```
 brew install cmake zlib
 pip install absl-py atari-py gin-config gym opencv-python tensorflow
 ```
 
-During installation, you may safely ignore the following error message:
-*tensorflow 1.10.1 has requirement numpy<=1.14.5,>=1.13.3, but you'll have
-numpy 1.15.1 which is incompatible*.
-
-Finally, download the Dopamine source, e.g.
-
-```
-git clone https://github.com/google/dopamine.git
-```
-
-#### Running tests
+### Running tests
 
 You can test whether the installation was successful by running the following:
 
 ```
 cd dopamine
 export PYTHONPATH=${PYTHONPATH}:.
-python tests/atari_init_test.py
+python tests/dopamine/atari_init_test.py
 ```
 
+If you want to run some of the other tests you will need to `pip install mock`.
+
+
+### Training agents
+
+#### Atari games
+
 The entry point to the standard Atari 2600 experiment is
-[`dopamine/atari/train.py`](https://github.com/google/dopamine/blob/master/dopamine/atari/train.py).
+[`dopamine/discrete_domains/train.py`](https://github.com/google/dopamine/blob/master/dopamine/discrete_domains/train.py).
 To run the basic DQN agent,
 
 ```
-python -um dopamine.atari.train \
-  --agent_name=dqn \
+python -um dopamine.discrete_domains.train \
   --base_dir=/tmp/dopamine \
   --gin_files='dopamine/agents/dqn/configs/dqn.gin'
 ```
@@ -175,6 +164,26 @@ are generated at the end of each iteration.
 
 More generally, the whole of Dopamine is easily configured using the
 [gin configuration framework](https://github.com/google/gin-config).
+
+#### Non-Atari discrete environments
+
+We provide sample configuration files for training an agent on Cartpole and
+Acrobot. For example, to train C51 on Cartpole with default settings, run the
+following command:
+
+```
+python -um dopamine.discrete_domains.train \
+  --base_dir=/tmp/dopamine \
+  --gin_files='dopamine/agents/rainbow/configs/c51_cartpole.gin'
+```
+
+You can train Rainbow on Acrobot with the following command:
+
+```
+python -um dopamine.discrete_domains.train \
+  --base_dir=/tmp/dopamine \
+  --gin_files='dopamine/agents/rainbow/configs/rainbow_acrobot.gin'
+```
 
 
 ### Install as a library
@@ -220,11 +229,22 @@ Conference on Learning Representations, 2016.][prioritized_replay]
 
 ### Giving credit
 
-If you use Dopamine in your work, we ask that you cite this repository as a
-reference. The preferred format (authors in alphabetical order) is:
+If you use Dopamine in your work, we ask that you cite our
+[white paper][dopamine_paper]. Here is an example BibTeX entry:
 
-Marc G. Bellemare, Pablo Samuel Castro, Carles Gelada, Saurabh Kumar, Subhodeep Moitra.
-Dopamine, https://github.com/google/dopamine, 2018.
+```
+@article{castro18dopamine,
+  author    = {Pablo Samuel Castro and
+               Subhodeep Moitra and
+               Carles Gelada and
+               Saurabh Kumar and
+               Marc G. Bellemare},
+  title     = {Dopamine: {A} {R}esearch {F}ramework for {D}eep {R}einforcement {L}earning},
+  year      = {2018},
+  url       = {http://arxiv.org/abs/1812.06110},
+  archivePrefix = {arXiv}
+}
+```
 
 
 
@@ -236,3 +256,4 @@ Dopamine, https://github.com/google/dopamine, 2018.
 [c51]: http://proceedings.mlr.press/v70/bellemare17a.html
 [rainbow]: https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/download/17204/16680
 [iqn]: https://arxiv.org/abs/1806.06923
+[dopamine_paper]: https://arxiv.org/abs/1812.06110
